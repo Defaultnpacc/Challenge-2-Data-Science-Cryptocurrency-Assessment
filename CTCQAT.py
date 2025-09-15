@@ -30,7 +30,7 @@ def get_user_inputs():
     except Exception as e:
         print(f"Unexpected error during input: {e}")
         exit(1)
-        
+
 def fetch_transactions(api_key, wallet_address, num_transactions):
     """
     Fetch recent transactions from Etherscan API.
@@ -66,7 +66,7 @@ def fetch_transactions(api_key, wallet_address, num_transactions):
     except Exception as e:
         print(f"Unexpected error during API fetch: {e}")
         exit(1)
-        
+
 def build_graph(transactions):
     """
     Build a directed graph from transactions.
@@ -97,37 +97,57 @@ def build_graph(transactions):
     except Exception as e:
         print(f"Unexpected error building graph: {e}")
         exit(1)
-        
+
 def plot_graph(G, wallet_address, num_transactions):
     """
-    Plot the transaction graph using matplotlib and networkx.
-    Handles plotting errors.
+    Plot a bar chart showing the number of transactions per wallet address.
+    X-axis: Full wallet addresses.
+    Y-axis: Number of transactions (total degree = in-degree + out-degree).
+    Limits to top 10 addresses by transaction count if too many for clarity.
     """
     try:
-        plt.figure(figsize=(12, 8))
-        pos = nx.spring_layout(G, k=1, iterations=50)  # Spring layout for better visualization
-        nx.draw(
-            G, pos, 
-            with_labels=False, 
-            node_size=300, 
-            node_color='lightblue', 
-            font_size=8, 
-            font_weight='bold',
-            arrows=True, 
-            arrowsize=10,
-            edge_color='gray',
-            width=[d['weight'] * 0.1 for (u, v, d) in G.edges(data=True)]  # Edge width proportional to value
+        plt.figure(figsize=(16, 6))  # Wider figure to fit full addresses
+
+        # Calculate transaction count (total degree) for each address
+        addresses = list(G.nodes())
+        transaction_counts = [G.degree(node) for node in addresses]
+
+        # Sort addresses by transaction count (descending) and limit to top 10 for clarity
+        address_count_pairs = sorted(zip(addresses, transaction_counts), key=lambda x: x[1], reverse=True)
+        if len(address_count_pairs) > 10:
+            print(f"Warning: {len(address_count_pairs)} unique addresses found. Displaying top 10 by transaction count for clarity.")
+            address_count_pairs = address_count_pairs[:10]
+        addresses, transaction_counts = zip(*address_count_pairs)
+
+        # Use full addresses for labels
+        address_labels = list(addresses)  # Full addresses, no shortening
+
+        # Plot bar chart
+        plt.bar(address_labels, transaction_counts, color='lightblue', edgecolor='black')
+        plt.xlabel('Wallet Addresses', fontsize=12)
+        plt.ylabel('Number of Transactions', fontsize=12)
+        plt.title(
+            f'Transactions by Address for Wallet {wallet_address[:6]}...{wallet_address[-4:]} (Last {num_transactions} Tx)',
+            fontsize=14, pad=20
         )
-        plt.title(f'Transaction Graph for Wallet {wallet_address[:10]}... (Last {num_transactions} Transactions)')
-        plt.axis('off')
+
+        # Rotate x-axis labels 90 degrees and adjust font size for full addresses
+        plt.xticks(rotation=90, ha='center', fontsize=7)
+        plt.grid(True, axis='y', linestyle='--', alpha=0.7)  # Add y-axis grid for clarity
+        plt.tight_layout(pad=2.0)  # Adjust margins to fit labels
+
+        # Add value labels on top of bars
+        for i, count in enumerate(transaction_counts):
+            plt.text(i, count + 0.1, str(count), ha='center', va='bottom', fontsize=9)
+
         plt.show()
     except Exception as e:
-        print(f"Error plotting graph: {e}. Graph plotting skipped.")
-        
+        print(f"Error plotting bar chart: {e}. Plotting skipped.")
+
 def print_insights(transactions, wallet_address, total_value_transferred, unique_addresses):
     """
     Print key insights, metrics, and basic illicit activity detection.
-    Uses heuristics for flags.
+    Uses heuristics for flags, displaying full wallet addresses for high-degree nodes.
     """
     try:
         print("=== Key Insights and Metrics ===")
@@ -149,16 +169,16 @@ def print_insights(transactions, wallet_address, total_value_transferred, unique
         else:
             print("Insight: Low recent activity.")
 
-        #Detection of possible illicit activity (basic heuristics)
+        # Detection of possible illicit activity (basic heuristics)
         # Note: This is simplistic; real detection requires blacklists (e.g., from Chainalysis) and more analysis.
-        # Here high-value single tx (>10 ETH) or high-degree nodes (potential mixers/hubs) are flagged.
+        # Flag high-value single tx (>10 ETH) or high-degree nodes (potential mixers/hubs).
         high_value_txs = [tx for tx in transactions if int(tx['value']) / 1e18 > 10]
-        G = nx.DiGraph()  # Rebuild minimal graph for degree calculation if needed
+        G = nx.DiGraph()  # Rebuild minimal graph for degree calculation
         for tx in transactions:
             G.add_edge(tx['from'].lower(), tx['to'].lower())
         high_degree_nodes = [node for node, degree in dict(G.degree()).items() if degree > 3]
 
-        print("\n=== Bonus: Illicit Activity Detection (Basic) ===")
+        print("\n=== Illicit Activity Detection (Basic) ===")
         if high_value_txs:
             print(f"Potential Flag: {len(high_value_txs)} high-value transactions (>10 ETH) detected. Could indicate large transfers or wash trading.")
             for tx in high_value_txs[:3]:  # Show top 3
@@ -166,7 +186,7 @@ def print_insights(transactions, wallet_address, total_value_transferred, unique
         if high_degree_nodes:
             print(f"Potential Flag: {len(high_degree_nodes)} addresses with high connectivity (degree >3). Could suggest mixer or exchange activity.")
             for node in high_degree_nodes[:3]:
-                print(f"  - Address: {node[:10]}...")
+                print(f"  - Address: {node}")  # Display full address
         if not high_value_txs and not high_degree_nodes:
             print("No basic red flags detected. Activity appears routine.")
 
@@ -176,6 +196,17 @@ def print_insights(transactions, wallet_address, total_value_transferred, unique
 
 # Main execution
 if __name__ == "__main__":
+    # Ensure required libraries are installed
+    try:
+        import requests
+        import networkx
+        import matplotlib
+    except ModuleNotFoundError as e:
+        print(f"Required library missing: {e}")
+        print("Please install required libraries by running:")
+        print("  pip install requests networkx matplotlib")
+        exit(1)
+
     API_KEY, WALLET_ADDRESS, NUM_TRANSACTIONS = get_user_inputs()
     transactions = fetch_transactions(API_KEY, WALLET_ADDRESS, NUM_TRANSACTIONS)
     if transactions:  # Only proceed if there are transactions
