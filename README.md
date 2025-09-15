@@ -5,7 +5,7 @@ Uses a public blockchain API from Etherscan to:
 
 Query recent transactions of a crypto wallet address
 
-Plots a simple graph:
+Plots a simple bar graph:
 
 Nodes = Wallet addresses
 
