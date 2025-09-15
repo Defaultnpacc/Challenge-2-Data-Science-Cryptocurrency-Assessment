@@ -1,16 +1,6 @@
 # CTCQAT
 Crypto Currency Query & Analysis Tool
 
-Uses a public blockchain API from Etherscan to:
+This Python script fetches and analyzes Ethereum wallet transactions using the Etherscan API. It builds a directed graph where nodes represent wallet addresses and edges represent transactions, then visualizes the number of transactions per address in a bar chart. 
 
-Query recent transactions of a crypto wallet address
-
-Plots a simple bar graph:
-
-Nodes = Wallet addresses
-
-Edges = Transactions
-
-Focus on a small subset (e.g. 10–20 transactions) for clarity
-
-Provides insights on the activity / detection of possible illicit activity
+The script also provides insights into transaction metrics and flags potential illicit activity using basic heuristics (e.g., high-value transactions or high-connectivity addresses).
