@@ -184,7 +184,7 @@ def print_insights(transactions, wallet_address, total_value_transferred, unique
             for tx in high_value_txs[:3]:  # Show top 3
                 print(f"  - Tx Hash: {tx['hash'][:10]}... Value: {int(tx['value'])/1e18:.2f} ETH")
         if high_degree_nodes:
-            print(f"Potential Flag: {len(high_degree_nodes)} addresses with high connectivity (degree >3). Could suggest mixer or exchange activity.")
+            print(f"Potential Flag: {len(high_degree_nodes)} addresses are involved in many transactions (more than 3). These could be popular wallets, exchanges, or services that act as hubs for sending or receiving ETH.")
             for node in high_degree_nodes[:3]:
                 print(f"  - Address: {node}")  # Display full address
         if not high_value_txs and not high_degree_nodes:
