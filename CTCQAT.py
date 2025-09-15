@@ -97,3 +97,29 @@ def build_graph(transactions):
     except Exception as e:
         print(f"Unexpected error building graph: {e}")
         exit(1)
+        
+def plot_graph(G, wallet_address, num_transactions):
+    """
+    Plot the transaction graph using matplotlib and networkx.
+    Handles plotting errors.
+    """
+    try:
+        plt.figure(figsize=(12, 8))
+        pos = nx.spring_layout(G, k=1, iterations=50)  # Spring layout for better visualization
+        nx.draw(
+            G, pos, 
+            with_labels=False, 
+            node_size=300, 
+            node_color='lightblue', 
+            font_size=8, 
+            font_weight='bold',
+            arrows=True, 
+            arrowsize=10,
+            edge_color='gray',
+            width=[d['weight'] * 0.1 for (u, v, d) in G.edges(data=True)]  # Edge width proportional to value
+        )
+        plt.title(f'Transaction Graph for Wallet {wallet_address[:10]}... (Last {num_transactions} Transactions)')
+        plt.axis('off')
+        plt.show()
+    except Exception as e:
+        print(f"Error plotting graph: {e}. Graph plotting skipped.")
