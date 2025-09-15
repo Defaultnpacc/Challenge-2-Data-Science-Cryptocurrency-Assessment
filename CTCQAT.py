@@ -66,3 +66,34 @@ def fetch_transactions(api_key, wallet_address, num_transactions):
     except Exception as e:
         print(f"Unexpected error during API fetch: {e}")
         exit(1)
+        
+def build_graph(transactions):
+    """
+    Build a directed graph from transactions.
+    Nodes are addresses, edges are transactions with weights as ETH values.
+    Returns the graph, total value transferred, and unique addresses.
+    """
+    try:
+        G = nx.DiGraph()
+        total_value_transferred = 0.0
+        unique_addresses = set()
+
+        for tx in transactions:
+            from_addr = tx['from'].lower()
+            to_addr = tx['to'].lower()
+            value_wei = int(tx['value'])
+            value_eth = value_wei / 1e18  # Convert Wei to ETH
+            timestamp = datetime.fromtimestamp(int(tx['timeStamp']))
+            
+            G.add_edge(from_addr, to_addr, weight=value_eth, tx_hash=tx['hash'], timestamp=timestamp)
+            unique_addresses.add(from_addr)
+            unique_addresses.add(to_addr)
+            total_value_transferred += value_eth
+        
+        return G, total_value_transferred, unique_addresses
+    except KeyError as e:
+        print(f"Error in transaction data: Missing key {e}")
+        exit(1)
+    except Exception as e:
+        print(f"Unexpected error building graph: {e}")
+        exit(1)
