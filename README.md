@@ -68,5 +68,5 @@ Data Source: Etherscan API
 *Bar chart showing the number of transactions per wallet address (top 10 addresses).*
 
 ![Entire Output](Screenshot2.png)
+
 *Entire output after closing the graph.*
----
