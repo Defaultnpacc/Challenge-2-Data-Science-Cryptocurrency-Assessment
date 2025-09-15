@@ -123,3 +123,64 @@ def plot_graph(G, wallet_address, num_transactions):
         plt.show()
     except Exception as e:
         print(f"Error plotting graph: {e}. Graph plotting skipped.")
+        
+def print_insights(transactions, wallet_address, total_value_transferred, unique_addresses):
+    """
+    Print key insights, metrics, and basic illicit activity detection.
+    Uses heuristics for flags.
+    """
+    try:
+        print("=== Key Insights and Metrics ===")
+        print(f"Wallet Address: {wallet_address}")
+        print(f"Number of Transactions Analyzed: {len(transactions)}")
+        print(f"Unique Addresses Involved: {len(unique_addresses)}")
+        print(f"Total Value Transferred (ETH): {total_value_transferred:.4f}")
+        avg_value = total_value_transferred / len(transactions) if transactions else 0
+        print(f"Average Transaction Value (ETH): {avg_value:.4f}")
+
+        # Time-based insight (assuming recent = last 24 hours)
+        recent_threshold = datetime.now() - timedelta(hours=24)
+        recent_count = sum(1 for tx in transactions if datetime.fromtimestamp(int(tx['timeStamp'])) > recent_threshold)
+        print(f"Transactions in Last 24 Hours: {recent_count}")
+
+        # Simple activity insight
+        if recent_count > 5:
+            print("Insight: High activity detected (multiple transactions in the last day).")
+        else:
+            print("Insight: Low recent activity.")
+
+        #Detection of possible illicit activity (basic heuristics)
+        # Note: This is simplistic; real detection requires blacklists (e.g., from Chainalysis) and more analysis.
+        # Here high-value single tx (>10 ETH) or high-degree nodes (potential mixers/hubs) are flagged.
+        high_value_txs = [tx for tx in transactions if int(tx['value']) / 1e18 > 10]
+        G = nx.DiGraph()  # Rebuild minimal graph for degree calculation if needed
+        for tx in transactions:
+            G.add_edge(tx['from'].lower(), tx['to'].lower())
+        high_degree_nodes = [node for node, degree in dict(G.degree()).items() if degree > 3]
+
+        print("\n=== Bonus: Illicit Activity Detection (Basic) ===")
+        if high_value_txs:
+            print(f"Potential Flag: {len(high_value_txs)} high-value transactions (>10 ETH) detected. Could indicate large transfers or wash trading.")
+            for tx in high_value_txs[:3]:  # Show top 3
+                print(f"  - Tx Hash: {tx['hash'][:10]}... Value: {int(tx['value'])/1e18:.2f} ETH")
+        if high_degree_nodes:
+            print(f"Potential Flag: {len(high_degree_nodes)} addresses with high connectivity (degree >3). Could suggest mixer or exchange activity.")
+            for node in high_degree_nodes[:3]:
+                print(f"  - Address: {node[:10]}...")
+        if not high_value_txs and not high_degree_nodes:
+            print("No basic red flags detected. Activity appears routine.")
+
+        print("\nData Source: Etherscan API")
+    except Exception as e:
+        print(f"Error printing insights: {e}")
+
+# Main execution
+if __name__ == "__main__":
+    API_KEY, WALLET_ADDRESS, NUM_TRANSACTIONS = get_user_inputs()
+    transactions = fetch_transactions(API_KEY, WALLET_ADDRESS, NUM_TRANSACTIONS)
+    if transactions:  # Only proceed if there are transactions
+        G, total_value_transferred, unique_addresses = build_graph(transactions)
+        plot_graph(G, WALLET_ADDRESS, NUM_TRANSACTIONS)
+        print_insights(transactions, WALLET_ADDRESS, total_value_transferred, unique_addresses)
+    else:
+        print("No data to analyze. Exiting.")
